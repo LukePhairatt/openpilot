@@ -1330,7 +1330,7 @@ bool SpectraCamera::handle_camera_event(const cam_req_mgr_message *event_data) {
   uint64_t request_id = event_data->u.frame_msg.request_id;  // ID from the camera request manager
   uint64_t frame_id_raw = event_data->u.frame_msg.frame_id;  // raw as opposed to our re-indexed frame ID
   uint64_t timestamp = event_data->u.frame_msg.timestamp;    // timestamped in the kernel's SOF IRQ callback
-  int buf_idx = request_id % ife_buf_depth;
+  //LOGD("handle cam %d ts %lu req id %lu frame id %lu", cc.camera_num, timestamp, request_id, frame_id_raw);
 
   if (!validateEvent(request_id, frame_id_raw)) {
     return false;
@@ -1338,7 +1338,7 @@ bool SpectraCamera::handle_camera_event(const cam_req_mgr_message *event_data) {
 
   // Update tracking variables
   if (request_id == request_id_last + 1) {
-    expect_skip = false;
+    skip_expected = false;
   }
   frame_id_raw_last = frame_id_raw;
   request_id_last = request_id;
@@ -1351,13 +1351,16 @@ bool SpectraCamera::handle_camera_event(const cam_req_mgr_message *event_data) {
     return false;
   }
 
+  int buf_idx = request_id % ife_buf_depth;
+  bool ret = processFrame(buf_idx, request_id, frame_id_raw, timestamp);
   destroySyncObjectAt(buf_idx);
   enqueue_frame(request_id + ife_buf_depth);  // request next frame for this slot
-  return processFrame(buf_idx, request_id, frame_id_raw, timestamp);
+  return ret;
 }
 
 bool SpectraCamera::validateEvent(uint64_t request_id, uint64_t frame_id_raw) {
-  // check if the request ID is even valid
+  // check if the request ID is even valid. this happens after queued
+  // requests are cleared. unclear if it happens any other time.
   if (request_id == 0) {
     if (invalid_request_count++ > 10) {
       LOGE("camera %d reset after half second of invalid requests", cc.camera_num);
@@ -1369,7 +1372,7 @@ bool SpectraCamera::validateEvent(uint64_t request_id, uint64_t frame_id_raw) {
   invalid_request_count = 0;
 
   // check for skips in frame_id or request_id
-  if (!expect_skip) {
+  if (!skip_expected) {
     if (frame_id_raw != frame_id_raw_last + 1) {
       LOGE("camera %d frame ID skipped, %lu -> %lu", cc.camera_num, frame_id_raw_last, frame_id_raw);
       clearAndRequeue(request_id + 1);
@@ -1386,14 +1389,13 @@ bool SpectraCamera::validateEvent(uint64_t request_id, uint64_t frame_id_raw) {
 }
 
 void SpectraCamera::clearAndRequeue(uint64_t from_request_id) {
-  LOGW("clearing and requeuing camera %d from %lu", cc.camera_num, from_request_id);
-
   // clear everything, then queue up a fresh set of frames
+  LOGW("clearing and requeuing camera %d from %lu", cc.camera_num, from_request_id);
   clear_req_queue();
   for (uint64_t id = from_request_id; id < from_request_id + ife_buf_depth; ++id) {
     enqueue_frame(id);
   }
-  expect_skip = true;
+  skip_expected = true;
 }
 
 bool SpectraCamera::waitForFrameReady(uint64_t request_id) {
@@ -1445,11 +1447,6 @@ bool SpectraCamera::processFrame(int buf_idx, uint64_t request_id, uint64_t fram
 bool SpectraCamera::syncFirstFrame(int camera_id, uint64_t request_id, uint64_t raw_id, uint64_t timestamp) {
   if (first_frame_synced) return true;
 
-  // OX and OS cameras require a few frames for the FSIN to sync up
-  if (request_id < 3) {
-    return false;
-  }
-
   // Store the frame data for this camera
   camera_sync_data[camera_id] = SyncData{timestamp, raw_id + 1};
 
@@ -1463,7 +1460,7 @@ bool SpectraCamera::syncFirstFrame(int camera_id, uint64_t request_id, uint64_t 
   for (const auto &[_, sync_data] : camera_sync_data) {
     uint64_t diff = std::max(timestamp, sync_data.timestamp) -
                     std::min(timestamp, sync_data.timestamp);
-    if (diff > 0.5*1e6) {  // within 0.5ms
+    if (diff > 0.2*1e6) { // milliseconds
       all_cams_synced = false;
     }
   }

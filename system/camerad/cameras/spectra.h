@@ -190,7 +190,7 @@ public:
   uint64_t request_id_last = 0;
   uint64_t frame_id_raw_last = 0;
   int invalid_request_count = 0;
-  bool expect_skip = true;
+  bool skip_expected = true;
 
   SpectraOutputType output_type;
 
