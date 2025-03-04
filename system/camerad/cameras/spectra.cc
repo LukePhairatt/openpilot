@@ -1371,13 +1371,13 @@ bool SpectraCamera::validateEvent(uint64_t request_id, uint64_t frame_id_raw) {
   // check for skips in frame_id or request_id
   if (!expect_skip) {
     if (frame_id_raw != frame_id_raw_last + 1) {
-      LOGE("camera %d realign", cc.camera_num);
+      LOGE("camera %d frame ID skipped, %lu -> %lu", cc.camera_num, frame_id_raw_last, frame_id_raw);
       clearAndRequeue(request_id + 1);
       return false;
     }
 
     if (request_id != request_id_last + 1) {
-      LOGE("camera %d dropped requests %ld %ld", cc.camera_num, request_id, request_id_last);
+      LOGE("camera %d requests skipped %ld -> %ld", cc.camera_num, request_id_last, request_id);
       clearAndRequeue(request_id_last + 1);
       return false;
     }
