@@ -249,6 +249,15 @@ SpectraCamera::~SpectraCamera() {
 }
 
 int SpectraCamera::clear_req_queue() {
+  // for "realtime" devices
+  struct cam_req_mgr_flush_info req_mgr_flush_request = {0};
+  req_mgr_flush_request.session_hdl = session_handle;
+  req_mgr_flush_request.link_hdl = link_handle;
+  req_mgr_flush_request.flush_type = CAM_REQ_MGR_FLUSH_TYPE_ALL;
+  int ret = do_cam_control(m->video0_fd, CAM_REQ_MGR_FLUSH_REQ, &req_mgr_flush_request, sizeof(req_mgr_flush_request));
+  LOGD("flushed all req: %d", ret);
+
+  // for "non-realtime" BPS
   if (icp_dev_handle > 0) {
     struct cam_flush_dev_cmd cmd = {
       .session_handle = session_handle,
@@ -259,13 +268,6 @@ int SpectraCamera::clear_req_queue() {
     assert(err == 0);
     LOGD("flushed bps: %d", err);
   }
-
-  struct cam_req_mgr_flush_info req_mgr_flush_request = {0};
-  req_mgr_flush_request.session_hdl = session_handle;
-  req_mgr_flush_request.link_hdl = link_handle;
-  req_mgr_flush_request.flush_type = CAM_REQ_MGR_FLUSH_TYPE_ALL;
-  int ret = do_cam_control(m->video0_fd, CAM_REQ_MGR_FLUSH_REQ, &req_mgr_flush_request, sizeof(req_mgr_flush_request));
-  LOGD("flushed all req: %d", ret);
 
   for (int i = 0; i < MAX_IFE_BUFS; ++i) {
     destroySyncObjectAt(i);
