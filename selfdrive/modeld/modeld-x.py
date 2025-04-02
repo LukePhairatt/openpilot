@@ -220,8 +220,8 @@ def main(demo=False):
 
   # messaging
   pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry"])
-  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl"])
-
+  ## sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl"])
+  sm = SubMaster(["deviceState", "roadCameraState", "liveCalibration", "driverMonitoringState"])
 
   publish_state = PublishState()
   params = Params()
@@ -240,16 +240,16 @@ def main(demo=False):
   meta_extra = FrameMeta()
 
 
-  if demo:
-    CP = get_demo_car_params()
-  else:
-    CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
-  cloudlog.info("modeld got CarParams: %s", CP.brand)
+  ## if demo:
+    ## CP = get_demo_car_params()
+  ## else:
+    ## CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
+  ## cloudlog.info("modeld got CarParams: %s", CP.brand)
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
-  steer_delay = CP.steerActuatorDelay + .2
+  steer_delay = 0.0 ## CP.steerActuatorDelay + .2
 
-  DH = DesireHelper()
+  ## DH = DesireHelper()
   
   while True:
     # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
@@ -285,10 +285,10 @@ def main(demo=False):
       meta_extra = meta_main
 
     sm.update(0)
-    desire = DH.desire
+    ## desire = DH.desire
     is_rhd = sm["driverMonitoringState"].isRHD
     frame_id = sm["roadCameraState"].frameId
-    v_ego = max(sm["carState"].vEgo, 0.)
+    v_ego = 0.0 ## max(sm["carState"].vEgo, 0.)
     lateral_control_params = np.array([v_ego, steer_delay], dtype=np.float32)
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
       device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
@@ -301,8 +301,8 @@ def main(demo=False):
     traffic_convention[int(is_rhd)] = 1
 
     vec_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
-    if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
-      vec_desire[desire] = 1
+    ## if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
+      ## vec_desire[desire] = 1
     
     # tracked dropped frames
     vipc_dropped_frames = max(0, meta_main.frame_id - last_vipc_frame_id - 1)
@@ -336,19 +336,19 @@ def main(demo=False):
                      publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
                      frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, live_calib_seen)
 
-      desire_state = modelv2_send.modelV2.meta.desireState
-      l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
-      r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
-      lane_change_prob = l_lane_change_prob + r_lane_change_prob
-      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
-      modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
-      modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
-      drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
-      drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
+      ## desire_state = modelv2_send.modelV2.meta.desireState
+      ## l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
+      ## r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
+      ## lane_change_prob = l_lane_change_prob + r_lane_change_prob
+      ## DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
+      ## modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
+      ## modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
+      ## drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
+      ## drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
 
       fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
-      pm.send('modelV2', modelv2_send)
-      pm.send('drivingModelData', drivingdata_send)
+      pm.send('modelV2', modelv2_send) # used by ui to render path
+      ## pm.send('drivingModelData', drivingdata_send) 
       pm.send('cameraOdometry', posenet_send)
     last_vipc_frame_id = meta_main.frame_id
 
