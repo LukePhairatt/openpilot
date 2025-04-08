@@ -258,7 +258,8 @@ def main() -> NoReturn:
   config_realtime_process([0, 1, 2, 3], 5)
 
   pm = messaging.PubMaster(['liveCalibration'])
-  sm = messaging.SubMaster(['cameraOdometry', 'carState', 'carParams'], poll='cameraOdometry')
+  ##sm = messaging.SubMaster(['cameraOdometry', 'carState', 'carParams'], poll='cameraOdometry')
+  sm = messaging.SubMaster(['cameraOdometry'], poll='cameraOdometry')
 
   calibrator = Calibrator(param_put=True)
 
@@ -266,10 +267,10 @@ def main() -> NoReturn:
     timeout = 0 if sm.frame == -1 else 100
     sm.update(timeout)
 
-    calibrator.not_car = sm['carParams'].notCar
+    ##calibrator.not_car = sm['carParams'].notCar
 
     if sm.updated['cameraOdometry']:
-      calibrator.handle_v_ego(sm['carState'].vEgo)
+      calibrator.handle_v_ego(0.0) ##(sm['carState'].vEgo)
       new_rpy = calibrator.handle_cam_odom(sm['cameraOdometry'].trans,
                                            sm['cameraOdometry'].rot,
                                            sm['cameraOdometry'].wideFromDeviceEuler,
