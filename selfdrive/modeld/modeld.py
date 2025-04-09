@@ -30,7 +30,7 @@ from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_pose_msg, PublishState
 from openpilot.selfdrive.modeld.constants import ModelConstants
 from openpilot.selfdrive.modeld.models.commonmodel_pyx import DrivingModelFrame, CLContext
-import cv2
+
 
 PROCESS_NAME = "selfdrive.modeld.modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -39,30 +39,6 @@ VISION_PKL_PATH = Path(__file__).parent / 'models/driving_vision_tinygrad.pkl'
 POLICY_PKL_PATH = Path(__file__).parent / 'models/driving_policy_tinygrad.pkl'
 VISION_METADATA_PATH = Path(__file__).parent / 'models/driving_vision_metadata.pkl'
 POLICY_METADATA_PATH = Path(__file__).parent / 'models/driving_policy_metadata.pkl'
-
-import cv2
-import numpy as np
-
-def save_yuv420_to_image(vision_buf, output_filename):
-    # Extract buffer as NumPy array
-    buffer = vision_buf.data  # This should be a flat uint8 array
-    
-    # Get dimensions
-    width, height = vision_buf.width, vision_buf.height
-    uv_offset = vision_buf.uv_offset  # Start of UV plane
-
-    # Split the buffer into Y and UV planes
-    y_plane = buffer[:uv_offset].reshape((height, width))
-    uv_plane = buffer[uv_offset:].reshape((height // 2, width))  # Interleaved UV
-
-    # Convert NV12 to BGR (OpenCV expects a single YUV420sp frame)
-    yuv_frame = np.vstack((y_plane, uv_plane))  # Stack Y and UV together
-    bgr_image = cv2.cvtColor(yuv_frame, cv2.COLOR_YUV2BGR_NV12)
-
-    # Save the image
-    cv2.imwrite(output_filename, bgr_image)
-    print(f"Image saved to {output_filename}")
-
 
 class FrameMeta:
   frame_id: int = 0
@@ -220,8 +196,8 @@ def main(demo=False):
 
   # messaging
   pm = PubMaster(["modelV2", "drivingModelData", "cameraOdometry"])
-  sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl"])
-
+  ## sm = SubMaster(["deviceState", "carState", "roadCameraState", "liveCalibration", "driverMonitoringState", "carControl"])
+  sm = SubMaster(["deviceState", "roadCameraState", "liveCalibration", "driverMonitoringState"])
 
   publish_state = PublishState()
   params = Params()
@@ -247,9 +223,9 @@ def main(demo=False):
   cloudlog.info("modeld got CarParams: %s", CP.brand)
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
-  steer_delay = CP.steerActuatorDelay + .2
+  steer_delay = 0.0 ## CP.steerActuatorDelay + .2
 
-  DH = DesireHelper()
+  ## DH = DesireHelper()
   
   while True:
     # Keep receiving frames until we are at least 1 frame ahead of previous extra frame
@@ -288,7 +264,7 @@ def main(demo=False):
     desire = DH.desire
     is_rhd = sm["driverMonitoringState"].isRHD
     frame_id = sm["roadCameraState"].frameId
-    v_ego = max(sm["carState"].vEgo, 0.)
+    v_ego = 0.0 ## max(sm["carState"].vEgo, 0.)
     lateral_control_params = np.array([v_ego, steer_delay], dtype=np.float32)
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
       device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
@@ -301,8 +277,8 @@ def main(demo=False):
     traffic_convention[int(is_rhd)] = 1
 
     vec_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
-    if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
-      vec_desire[desire] = 1
+    ## if desire >= 0 and desire < ModelConstants.DESIRE_LEN:
+      ## vec_desire[desire] = 1
     
     # tracked dropped frames
     vipc_dropped_frames = max(0, meta_main.frame_id - last_vipc_frame_id - 1)
@@ -336,19 +312,19 @@ def main(demo=False):
                      publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
                      frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, live_calib_seen)
 
-      desire_state = modelv2_send.modelV2.meta.desireState
-      l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
-      r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
-      lane_change_prob = l_lane_change_prob + r_lane_change_prob
-      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
-      modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
-      modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
-      drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
-      drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
+      ## desire_state = modelv2_send.modelV2.meta.desireState
+      ## l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
+      ## r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
+      ## lane_change_prob = l_lane_change_prob + r_lane_change_prob
+      ## DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob)
+      ## modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
+      ## modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
+      ## drivingdata_send.drivingModelData.meta.laneChangeState = DH.lane_change_state
+      ## drivingdata_send.drivingModelData.meta.laneChangeDirection = DH.lane_change_direction
 
       fill_pose_msg(posenet_send, model_output, meta_main.frame_id, vipc_dropped_frames, meta_main.timestamp_eof, live_calib_seen)
       pm.send('modelV2', modelv2_send)
-      pm.send('drivingModelData', drivingdata_send)
+      ## pm.send('drivingModelData', drivingdata_send)
       pm.send('cameraOdometry', posenet_send)
     last_vipc_frame_id = meta_main.frame_id
 

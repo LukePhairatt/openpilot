@@ -61,7 +61,7 @@ static void update_state(UIState *s) {
     scene.light_sensor = -1;
   }
   scene.ignition = true; // TEST
-  scene.started = sm["deviceState"].getDeviceState().getStarted() && scene.ignition;
+  scene.started = true; // sm["deviceState"].getDeviceState().getStarted() && scene.ignition;
 }
 
 void ui_update_params(UIState *s) {
