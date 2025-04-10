@@ -163,7 +163,7 @@ def main(demo=False):
   sentry.set_tag("daemon", PROCESS_NAME)
   cloudlog.bind(daemon=PROCESS_NAME)
   setproctitle(PROCESS_NAME)
-  config_realtime_process(7, 54)
+  config_realtime_process(3, 54) ## 7
 
   cloudlog.warning("setting up CL context")
   cl_context = CLContext()
@@ -216,11 +216,11 @@ def main(demo=False):
   meta_extra = FrameMeta()
 
 
-  if demo:
-    CP = get_demo_car_params()
-  else:
-    CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
-  cloudlog.info("modeld got CarParams: %s", CP.brand)
+  ## if demo:
+    ## CP = get_demo_car_params()
+  ## else:
+    ## CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
+  ## cloudlog.info("modeld got CarParams: %s", CP.brand)
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
   steer_delay = 0.0 ## CP.steerActuatorDelay + .2
@@ -261,7 +261,7 @@ def main(demo=False):
       meta_extra = meta_main
 
     sm.update(0)
-    desire = DH.desire
+    ## desire = DH.desire
     is_rhd = sm["driverMonitoringState"].isRHD
     frame_id = sm["roadCameraState"].frameId
     v_ego = 0.0 ## max(sm["carState"].vEgo, 0.)
