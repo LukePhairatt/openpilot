@@ -204,11 +204,11 @@ def main(demo=False):
   meta_extra = FrameMeta()
 
 
-  if demo:
-    CP = get_demo_car_params()
-  else:
-    CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
-  cloudlog.info("modeld got CarParams: %s", CP.brand)
+  ## if demo:
+    ## CP = get_demo_car_params()
+  ## else:
+    ## CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
+  ## cloudlog.info("modeld got CarParams: %s", CP.brand)
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
   steer_delay = 0.0 ##CP.steerActuatorDelay + .2
