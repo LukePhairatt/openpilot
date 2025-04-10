@@ -37,7 +37,6 @@ static void update_state(UIState *s) {
       s->scene.view_from_calib = s->scene.view_from_wide_calib = VIEW_FROM_DEVICE;
     }
   }
-  /*
   if (sm.updated("pandaStates")) {
     auto pandaStates = sm["pandaStates"].getPandaStates();
     if (pandaStates.size() > 0) {
@@ -52,7 +51,7 @@ static void update_state(UIState *s) {
     }
   } else if ((s->sm->frame - s->sm->rcv_frame("pandaStates")) > 5*UI_FREQ) {
     scene.pandaType = cereal::PandaState::PandaType::UNKNOWN;
-  }*/
+  }
   if (sm.updated("wideRoadCameraState")) {
     auto cam_state = sm["wideRoadCameraState"].getWideRoadCameraState();
     float scale = (cam_state.getSensor() == cereal::FrameData::ImageSensor::AR0231) ? 6.0f : 1.0f;
@@ -60,10 +59,7 @@ static void update_state(UIState *s) {
   } else if (!sm.allAliveAndValid({"wideRoadCameraState"})) {
     scene.light_sensor = -1;
   }
-  //> Force to run without Canbus connection
-  scene.ignition = true; // 
-  scene.started = true; // sm["deviceState"].getDeviceState().getStarted() && scene.ignition;
-  //<
+  scene.started = sm["deviceState"].getDeviceState().getStarted() && scene.ignition;
 }
 
 void ui_update_params(UIState *s) {

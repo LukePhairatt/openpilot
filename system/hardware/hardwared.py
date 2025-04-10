@@ -228,12 +228,7 @@ def hardware_thread(end_event, hw_queue) -> None:
     elif (time.monotonic() - sm.recv_time['pandaStates']) > DISCONNECT_TIMEOUT:
       if onroad_conditions["ignition"]:
         onroad_conditions["ignition"] = False
-        cloudlog.error("panda timed out onroad")
-
-    ##> Force ignite without Canbus connection
-    onroad_conditions["ignition"] = True
-    ##<
-    
+        cloudlog.error("panda timed out onroad")    
     # Run at 2Hz, plus either edge of ignition
     ign_edge = (started_ts is not None) != onroad_conditions["ignition"]
     if (sm.frame % round(SERVICE_LIST['pandaStates'].frequency * DT_HW) != 0) and not ign_edge:
